@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Voice Notes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    header {
+      background: #1a1a2e; color: white; padding: 16px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      position: sticky; top: 0; z-index: 10;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+    header button { background: none; border: none; color: rgba(255,255,255,0.65); font-size: 0.9rem; cursor: pointer; padding: 4px 8px; -webkit-tap-highlight-color: transparent; }
+
+    .main { padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+
+    /* ── Record button ── */
+    #record-btn {
+      width: 130px; height: 130px; border-radius: 50%; border: none;
+      background: #e63946; color: white; font-size: 1rem; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 24px rgba(230,57,70,0.45);
+      transition: transform 0.1s, background 0.2s;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    #record-btn:active { transform: scale(0.93); }
+    #record-btn.recording { background: #c1121f; animation: pulse 1.4s ease-in-out infinite; }
+    #record-btn:disabled { background: #aaa; box-shadow: none; cursor: not-allowed; }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 4px 24px rgba(230,57,70,0.45); }
+      50%       { box-shadow: 0 4px 48px rgba(230,57,70,0.85); }
+    }
+
+    #status { font-size: 1rem; color: #555; min-height: 22px; }
+
+    /* ── Message boxes ── */
+    .msg-box { width: 100%; max-width: 560px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
+    #error-box   { background: #fff0f0; border: 1px solid #f5c6cb; color: #721c24; }
+    #warning-box { background: #fff8e1; border: 1px solid #ffc107; color: #6d4c00; font-size: 0.85rem; }
+
+    /* ── Results card ── */
+    #results { width: 100%; max-width: 560px; display: none; flex-direction: column; gap: 14px; }
+    .card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
+    .card-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: #999; margin-bottom: 10px; font-weight: 600; }
+
+    #transcript-edit {
+      width: 100%; min-height: 140px; padding: 12px;
+      border: 1px solid #ddd; border-radius: 8px;
+      font-size: 0.95rem; color: #333; line-height: 1.55;
+      font-family: inherit; resize: vertical;
+    }
+    #transcript-edit:focus { outline: none; border-color: #4361ee; }
+
+    .action-row { display: flex; gap: 10px; margin-top: 10px; }
+    #save-btn {
+      flex: 1; padding: 13px; border-radius: 8px; border: none;
+      background: #1a1a2e; color: white; font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; touch-action: manipulation;
+    }
+    #save-btn:disabled { background: #aaa; cursor: not-allowed; }
+    #save-btn:active:not(:disabled) { opacity: 0.85; }
+    #discard-btn {
+      padding: 13px 20px; border-radius: 8px; border: 1px solid #ccc;
+      background: white; color: #555; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; touch-action: manipulation;
+    }
+
+    #drive-link {
+      display: none; align-items: center; gap: 10px; padding: 12px 16px;
+      background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 10px;
+      text-decoration: none; color: #276749; font-size: 0.9rem; font-weight: 600;
+    }
+    #new-btn {
+      display: none; padding: 12px 32px; border-radius: 8px; border: none;
+      background: #1a1a2e; color: white; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; touch-action: manipulation; align-self: center;
+    }
+
+    /* ── Settings panel ── */
+    #settings-panel { display: none; width: 100%; max-width: 560px; }
+    #settings-panel.open { display: flex; flex-direction: column; gap: 16px; }
+
+    .settings-card {
+      background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .settings-card h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+
+    .field label { font-size: 0.85rem; color: #555; display: block; margin-bottom: 5px; }
+    .settings-input {
+      width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 0.88rem; font-family: monospace;
+    }
+    .settings-input:focus { outline: none; border-color: #4361ee; }
+
+    .settings-save {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      background: #1a1a2e; color: white; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    }
+    .connect-btn {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      background: #4361ee; color: white; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    }
+    #auth-status {
+      font-size: 0.85rem; padding: 8px 12px; border-radius: 6px; text-align: center;
+    }
+    #auth-status.connected    { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
+    #auth-status.disconnected { background: #fff8e1; color: #6d4c00;  border: 1px solid #ffc107; }
+
+    .setup-note {
+      background: #f0f4ff; border: 1px solid #c3cff7; color: #3355bb;
+      padding: 12px 14px; border-radius: 8px; font-size: 0.82rem; line-height: 1.6;
+    }
+    .setup-note ol { padding-left: 16px; }
+    .divider { border: none; border-top: 1px solid #eee; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Voice Notes</h1>
+  <button onclick="toggleSettings()">Settings</button>
+</header>
+
+<div class="main">
+
+  <!-- Settings panel -->
+  <div id="settings-panel">
+    <div class="settings-card">
+      <h2>API Keys</h2>
+      <div class="field">
+        <label for="input-groq">Groq API Key</label>
+        <input id="input-groq" class="settings-input" type="password" placeholder="gsk_...">
+      </div>
+      <div class="field">
+        <label for="input-folder">Drive Folder Name</label>
+        <input id="input-folder" class="settings-input" type="text" placeholder="Voice Notes">
+      </div>
+      <button class="settings-save" onclick="saveSettings()">Save</button>
+    </div>
+
+    <div class="settings-card">
+      <h2>Google Drive</h2>
+      <div class="field">
+        <label for="input-client-id">OAuth Client ID</label>
+        <input id="input-client-id" class="settings-input" type="text" placeholder="123456....apps.googleusercontent.com">
+      </div>
+      <button class="settings-save" onclick="saveClientId()">Save Client ID</button>
+      <hr class="divider">
+      <div id="auth-status" class="disconnected">Not connected</div>
+      <button class="connect-btn" onclick="connectGoogle()">Connect Google Drive</button>
+      <div class="setup-note">
+        <strong>First-time setup:</strong>
+        <ol>
+          <li>Google Cloud Console → APIs &amp; Services → Credentials</li>
+          <li>Create OAuth Client ID → type: <strong>Web application</strong></li>
+          <li>Add this page's URL to <em>Authorized JavaScript origins</em></li>
+          <li>Paste the Client ID above and tap Save</li>
+          <li>Tap Connect Google Drive</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recording UI -->
+  <button id="record-btn" onclick="toggleRecording()">Tap to<br>Record</button>
+  <div id="status">Ready</div>
+  <div id="error-box"   class="msg-box"></div>
+  <div id="warning-box" class="msg-box"></div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="card">
+      <div class="card-title">Transcript — edit before saving</div>
+      <textarea id="transcript-edit"></textarea>
+      <div class="action-row">
+        <button id="save-btn"    onclick="saveNote()">Save to Drive</button>
+        <button id="discard-btn" onclick="resetUI()">Discard</button>
+      </div>
+    </div>
+    <a id="drive-link" href="#" target="_blank">&#x2197; Open in Google Drive</a>
+    <button id="new-btn" onclick="resetUI()">Record Another</button>
+  </div>
+
+</div><!-- .main -->
+
+<script>
+// ── Settings (localStorage) ────────────────────────────────────────────
+const S = {
+  get groqKey()  { return localStorage.getItem('vn_groq_key')       || ''; },
+  set groqKey(v) { localStorage.setItem('vn_groq_key', v); },
+  get clientId() { return localStorage.getItem('vn_google_client_id') || ''; },
+  set clientId(v){ localStorage.setItem('vn_google_client_id', v); },
+  get folder()   { return localStorage.getItem('vn_drive_folder')   || 'Voice Notes'; },
+  set folder(v)  { localStorage.setItem('vn_drive_folder', v); },
+};
+
+function loadSettingsForm() {
+  document.getElementById('input-groq').value      = S.groqKey;
+  document.getElementById('input-client-id').value = S.clientId;
+  document.getElementById('input-folder').value    = S.folder;
+}
+
+function saveSettings() {
+  S.groqKey = document.getElementById('input-groq').value.trim();
+  S.folder  = document.getElementById('input-folder').value.trim() || 'Voice Notes';
+}
+
+function saveClientId() {
+  S.clientId = document.getElementById('input-client-id').value.trim();
+  tryInitTokenClient();
+  updateAuthStatus();
+}
+
+function toggleSettings() {
+  const p = document.getElementById('settings-panel');
+  loadSettingsForm();
+  p.classList.toggle('open');
+}
+
+// ── UI helpers ─────────────────────────────────────────────────────────
+function setStatus(t)    { document.getElementById('status').textContent = t; }
+function showError(msg)  { const b = document.getElementById('error-box');   b.textContent = 'Error: ' + msg; b.style.display = 'block'; }
+function showWarning(msg){ const b = document.getElementById('warning-box'); b.textContent = 'Warning: ' + msg; b.style.display = 'block'; }
+
+function resetUI() {
+  document.getElementById('results').style.display     = 'none';
+  document.getElementById('error-box').style.display   = 'none';
+  document.getElementById('warning-box').style.display = 'none';
+  document.getElementById('save-btn').style.display    = 'block';
+  document.getElementById('save-btn').disabled         = false;
+  document.getElementById('save-btn').textContent      = 'Save to Drive';
+  document.getElementById('discard-btn').style.display = 'block';
+  document.getElementById('drive-link').style.display  = 'none';
+  document.getElementById('new-btn').style.display     = 'none';
+  setStatus('Ready');
+}
+
+function setRecordBtn(html, recording) {
+  const btn = document.getElementById('record-btn');
+  btn.innerHTML = html;
+  btn.classList.toggle('recording', recording);
+}
+
+// ── Recording ──────────────────────────────────────────────────────────
+let mediaRecorder = null, chunks = [], isRecording = false;
+
+async function toggleRecording() {
+  if (isRecording) { mediaRecorder.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      processAudio(new Blob(chunks, { type: mediaRecorder.mimeType }));
+    };
+    mediaRecorder.start();
+    isRecording = true;
+    setRecordBtn('Stop', true);
+    setStatus('Recording...');
+    document.getElementById('results').style.display     = 'none';
+    document.getElementById('error-box').style.display   = 'none';
+    document.getElementById('warning-box').style.display = 'none';
+  } catch (err) {
+    showError('Microphone access denied: ' + err.message);
+  }
+}
+
+async function processAudio(blob) {
+  isRecording = false;
+  setRecordBtn('Tap to<br>Record', false);
+  document.getElementById('record-btn').disabled = true;
+  setStatus('Transcribing...');
+  try {
+    const transcript = await transcribeWithGroq(blob);
+    document.getElementById('transcript-edit').value = transcript;
+    document.getElementById('results').style.display = 'flex';
+    setStatus('Edit if needed, then save');
+  } catch (err) {
+    showError(err.message);
+    setStatus('Ready');
+  } finally {
+    document.getElementById('record-btn').disabled = false;
+  }
+}
+
+// ── Groq transcription ─────────────────────────────────────────────────
+async function transcribeWithGroq(blob) {
+  if (!S.groqKey) throw new Error('Groq API key not set — open Settings');
+  const form = new FormData();
+  form.append('file', blob, 'memo.webm');
+  form.append('model', 'whisper-large-v3');
+  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + S.groqKey },
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Transcription failed');
+  return data.text || '';
+}
+
+// ── Google auth (GIS + gapi) ───────────────────────────────────────────
+let googleToken = null, tokenClient = null, gapiReady = false, gisReady = false;
+
+function onGapiLoad() {
+  gapi.load('client', async () => {
+    await gapi.client.init({});
+    await Promise.all([
+      gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'),
+      gapi.client.load('https://www.googleapis.com/discovery/v1/apis/docs/v1/rest'),
+    ]);
+    gapiReady = true;
+    tryInitTokenClient();
+  });
+}
+
+function onGisLoad() {
+  gisReady = true;
+  tryInitTokenClient();
+}
+
+function tryInitTokenClient() {
+  if (!gapiReady || !gisReady || !S.clientId) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: S.clientId,
+    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents',
+    callback: (resp) => {
+      if (resp.error) { showError('Google auth failed: ' + resp.error); return; }
+      googleToken = resp.access_token;
+      gapi.client.setToken({ access_token: googleToken });
+      updateAuthStatus();
+    },
+  });
+  updateAuthStatus();
+}
+
+function connectGoogle() {
+  if (!S.clientId) { showError('Enter and save a Google Client ID first.'); return; }
+  if (!tokenClient) {
+    tryInitTokenClient();
+    if (!tokenClient) { showError('Still loading — try again in a moment.'); return; }
+  }
+  tokenClient.requestAccessToken({ prompt: googleToken ? '' : 'consent' });
+}
+
+function updateAuthStatus() {
+  const el = document.getElementById('auth-status');
+  if (googleToken) {
+    el.textContent = 'Connected to Google Drive ✓';
+    el.className = 'connected';
+  } else {
+    el.textContent = 'Not connected';
+    el.className = 'disconnected';
+  }
+}
+
+// ── Google Drive / Docs operations ────────────────────────────────────
+const folderCache = {};
+const pad = n => String(n).padStart(2, '0');
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function dayTitle(d)   { return `Voice Notes — ${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+function timeLabel(d)  { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+async function getOrCreateFolder(name) {
+  if (folderCache[name]) return folderCache[name];
+  const list = await gapi.client.drive.files.list({
+    q: `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: 'files(id)',
+  });
+  if (list.result.files.length > 0) {
+    return (folderCache[name] = list.result.files[0].id);
+  }
+  const f = await gapi.client.drive.files.create({
+    resource: { name, mimeType: 'application/vnd.google-apps.folder' },
+    fields: 'id',
+  });
+  return (folderCache[name] = f.result.id);
+}
+
+async function findTodayDoc(folderId, title) {
+  const res = await gapi.client.drive.files.list({
+    q: `name='${title}' and '${folderId}' in parents and mimeType='application/vnd.google-apps.document' and trashed=false`,
+    fields: 'files(id)',
+  });
+  return res.result.files.length > 0 ? res.result.files[0].id : null;
+}
+
+async function saveTranscript(transcript) {
+  if (!googleToken) throw new Error('Google not connected — open Settings and tap Connect Google Drive');
+
+  const now = new Date();
+  const title = dayTitle(now);
+  const noteText = `\n[${timeLabel(now)}]\n${transcript}\n`;
+
+  const folderId = await getOrCreateFolder(S.folder);
+  let docId = await findTodayDoc(folderId, title);
+
+  if (!docId) {
+    // Create via Docs API — no async conversion delay
+    const doc = await gapi.client.docs.documents.create({ resource: { title } });
+    docId = doc.result.documentId;
+
+    // Move into Voice Notes folder
+    const file = await gapi.client.drive.files.get({ fileId: docId, fields: 'parents' });
+    const prevParents = (file.result.parents || []).join(',');
+    await gapi.client.drive.files.update({
+      fileId: docId,
+      addParents: folderId,
+      removeParents: prevParents,
+      fields: 'id',
+      resource: {},
+    });
+
+    // Insert header + first note
+    const header = `${title}\n${'='.repeat(title.length)}\n`;
+    await gapi.client.docs.documents.batchUpdate({
+      documentId: docId,
+      resource: { requests: [{ insertText: { location: { index: 1 }, text: header + noteText } }] },
+    });
+  } else {
+    // Append to today's existing doc
+    const docData = await gapi.client.docs.documents.get({ documentId: docId });
+    const content = docData.result.body.content;
+    const endIndex = content[content.length - 1].endIndex - 1;
+    await gapi.client.docs.documents.batchUpdate({
+      documentId: docId,
+      resource: { requests: [{ insertText: { location: { index: endIndex }, text: noteText } }] },
+    });
+  }
+
+  return `https://docs.google.com/document/d/${docId}/edit`;
+}
+
+// ── Save note ──────────────────────────────────────────────────────────
+async function saveNote() {
+  const transcript = document.getElementById('transcript-edit').value.trim();
+  if (!transcript) return;
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  document.getElementById('warning-box').style.display = 'none';
+  setStatus('Saving...');
+
+  try {
+    const docUrl = await saveTranscript(transcript);
+    const link = document.getElementById('drive-link');
+    link.href = docUrl;
+    link.style.display = 'flex';
+    btn.style.display = 'none';
+    document.getElementById('discard-btn').style.display = 'none';
+    document.getElementById('new-btn').style.display = 'block';
+    setStatus('Saved to Google Drive');
+  } catch (err) {
+    showError(err.message);
+    btn.disabled = false;
+    btn.textContent = 'Save to Drive';
+    setStatus('Edit if needed, then save');
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────
+if (!S.groqKey || !S.clientId) {
+  document.getElementById('settings-panel').classList.add('open');
+  loadSettingsForm();
+}
+updateAuthStatus();
+</script>
+
+<script async defer src="https://apis.google.com/js/api.js"        onload="onGapiLoad()"></script>
+<script async defer src="https://accounts.google.com/gsi/client"   onload="onGisLoad()"></script>
+
+</body>
+</html>
