@@ -228,7 +228,6 @@ function setRecordBtn(html, active) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 let isRecording = false;
-let finalTranscript = '';
 
 function toggleRecording() {
   if (isRecording) { recognition.stop(); return; }
@@ -238,13 +237,12 @@ function toggleRecording() {
     return;
   }
 
-  finalTranscript = '';
   document.getElementById('results').style.display     = 'none';
   document.getElementById('error-box').style.display   = 'none';
   document.getElementById('warning-box').style.display = 'none';
 
   recognition = new SR();
-  recognition.continuous     = true;
+  recognition.continuous     = false;
   recognition.interimResults = true;
   recognition.lang           = navigator.language || 'en-US';
 
@@ -255,25 +253,20 @@ function toggleRecording() {
   };
 
   recognition.onresult = (e) => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) {
-        finalTranscript += e.results[i][0].transcript;
-      } else {
-        interim += e.results[i][0].transcript;
-      }
+    let final = '', interim = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
     }
-    document.getElementById('transcript-edit').value = finalTranscript + interim;
+    document.getElementById('transcript-edit').value = final || interim;
     document.getElementById('results').style.display = 'flex';
   };
 
   recognition.onend = () => {
     isRecording = false;
     setRecordBtn('Tap to<br>Record', false);
-    const text = finalTranscript.trim();
+    const text = document.getElementById('transcript-edit').value.trim();
     if (text) {
-      document.getElementById('transcript-edit').value = text;
-      document.getElementById('results').style.display = 'flex';
       setStatus('Edit if needed, then save');
     } else {
       setStatus('Ready');
