@@ -6,6 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>Voice Notes</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -228,26 +229,17 @@ function setRecordBtn(html, active) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 let isRecording = false;
+let savedTranscript = '';  // accumulates finals across auto-restarts
+let currentFinal = '';     // finals from the current recognition session
 
-function toggleRecording() {
-  if (isRecording) { recognition.stop(); return; }
-
-  if (!SR) {
-    showError('Speech recognition not supported — use Chrome on Android');
-    return;
-  }
-
-  document.getElementById('results').style.display     = 'none';
-  document.getElementById('error-box').style.display   = 'none';
-  document.getElementById('warning-box').style.display = 'none';
-
+function startRecognition() {
+  currentFinal = '';
   recognition = new SR();
   recognition.continuous     = false;
   recognition.interimResults = true;
   recognition.lang           = navigator.language || 'en-US';
 
   recognition.onstart = () => {
-    isRecording = true;
     setRecordBtn('Stop', true);
     setStatus('Listening...');
   };
@@ -258,29 +250,54 @@ function toggleRecording() {
       if (e.results[i].isFinal) final += e.results[i][0].transcript;
       else interim += e.results[i][0].transcript;
     }
-    document.getElementById('transcript-edit').value = final || interim;
+    currentFinal = final;
+    document.getElementById('transcript-edit').value = savedTranscript + final + interim;
     document.getElementById('results').style.display = 'flex';
   };
 
   recognition.onend = () => {
-    isRecording = false;
+    if (isRecording) {
+      // Chrome auto-stopped due to a pause — save finals and keep going
+      savedTranscript += currentFinal;
+      startRecognition();
+      return;
+    }
+    // User tapped Stop
     setRecordBtn('Tap to<br>Record', false);
     const text = document.getElementById('transcript-edit').value.trim();
-    if (text) {
-      setStatus('Edit if needed, then save');
-    } else {
-      setStatus('Ready');
-    }
+    if (text) setStatus('Edit if needed, then save');
+    else setStatus('Ready');
   };
 
   recognition.onerror = (e) => {
+    if (e.error === 'aborted') return;
     isRecording = false;
     setRecordBtn('Tap to<br>Record', false);
-    if (e.error !== 'aborted') showError('Speech error: ' + e.error);
+    showError('Speech error: ' + e.error);
     setStatus('Ready');
   };
 
   recognition.start();
+}
+
+function toggleRecording() {
+  if (isRecording) {
+    isRecording = false;  // must be set before stop() so onend doesn't restart
+    recognition.stop();
+    return;
+  }
+
+  if (!SR) {
+    showError('Speech recognition not supported — use Chrome on Android');
+    return;
+  }
+
+  isRecording = true;
+  savedTranscript = '';
+  document.getElementById('results').style.display     = 'none';
+  document.getElementById('error-box').style.display   = 'none';
+  document.getElementById('warning-box').style.display = 'none';
+  startRecognition();
 }
 
 // ── Google auth ────────────────────────────────────────────────────────
