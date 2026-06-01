@@ -21,7 +21,6 @@
 
     .main { padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
 
-    /* ── Record button ── */
     #record-btn {
       width: 130px; height: 130px; border-radius: 50%; border: none;
       background: #e63946; color: white; font-size: 1rem; font-weight: 700;
@@ -31,7 +30,6 @@
     }
     #record-btn:active { transform: scale(0.93); }
     #record-btn.recording { background: #c1121f; animation: pulse 1.4s ease-in-out infinite; }
-    #record-btn:disabled { background: #aaa; box-shadow: none; cursor: not-allowed; }
     @keyframes pulse {
       0%, 100% { box-shadow: 0 4px 24px rgba(230,57,70,0.45); }
       50%       { box-shadow: 0 4px 48px rgba(230,57,70,0.85); }
@@ -39,12 +37,10 @@
 
     #status { font-size: 1rem; color: #555; min-height: 22px; }
 
-    /* ── Message boxes ── */
     .msg-box { width: 100%; max-width: 560px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
     #error-box   { background: #fff0f0; border: 1px solid #f5c6cb; color: #721c24; }
     #warning-box { background: #fff8e1; border: 1px solid #ffc107; color: #6d4c00; font-size: 0.85rem; }
 
-    /* ── Results card ── */
     #results { width: 100%; max-width: 560px; display: none; flex-direction: column; gap: 14px; }
     .card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
     .card-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: #999; margin-bottom: 10px; font-weight: 600; }
@@ -82,7 +78,6 @@
       cursor: pointer; touch-action: manipulation; align-self: center;
     }
 
-    /* ── Settings panel ── */
     #settings-panel { display: none; width: 100%; max-width: 560px; }
     #settings-panel.open { display: flex; flex-direction: column; gap: 16px; }
 
@@ -131,28 +126,18 @@
 
 <div class="main">
 
-  <!-- Settings panel -->
   <div id="settings-panel">
     <div class="settings-card">
-      <h2>API Keys</h2>
-      <div class="field">
-        <label for="input-groq">Groq API Key</label>
-        <input id="input-groq" class="settings-input" type="password" placeholder="gsk_...">
-      </div>
+      <h2>Settings</h2>
       <div class="field">
         <label for="input-folder">Drive Folder Name</label>
         <input id="input-folder" class="settings-input" type="text" placeholder="Voice Notes">
       </div>
-      <button class="settings-save" onclick="saveSettings()">Save</button>
-    </div>
-
-    <div class="settings-card">
-      <h2>Google Drive</h2>
       <div class="field">
-        <label for="input-client-id">OAuth Client ID</label>
+        <label for="input-client-id">Google OAuth Client ID</label>
         <input id="input-client-id" class="settings-input" type="text" placeholder="123456....apps.googleusercontent.com">
       </div>
-      <button class="settings-save" onclick="saveClientId()">Save Client ID</button>
+      <button class="settings-save" onclick="saveSettings()">Save</button>
       <hr class="divider">
       <div id="auth-status" class="disconnected">Not connected</div>
       <button class="connect-btn" onclick="connectGoogle()">Connect Google Drive</button>
@@ -169,13 +154,11 @@
     </div>
   </div>
 
-  <!-- Recording UI -->
   <button id="record-btn" onclick="toggleRecording()">Tap to<br>Record</button>
   <div id="status">Ready</div>
   <div id="error-box"   class="msg-box"></div>
   <div id="warning-box" class="msg-box"></div>
 
-  <!-- Results -->
   <div id="results">
     <div class="card">
       <div class="card-title">Transcript — edit before saving</div>
@@ -189,13 +172,11 @@
     <button id="new-btn" onclick="resetUI()">Record Another</button>
   </div>
 
-</div><!-- .main -->
+</div>
 
 <script>
-// ── Settings (localStorage) ────────────────────────────────────────────
+// ── Settings ───────────────────────────────────────────────────────────
 const S = {
-  get groqKey()  { return localStorage.getItem('vn_groq_key')       || ''; },
-  set groqKey(v) { localStorage.setItem('vn_groq_key', v); },
   get clientId() { return localStorage.getItem('vn_google_client_id') || ''; },
   set clientId(v){ localStorage.setItem('vn_google_client_id', v); },
   get folder()   { return localStorage.getItem('vn_drive_folder')   || 'Voice Notes'; },
@@ -203,17 +184,12 @@ const S = {
 };
 
 function loadSettingsForm() {
-  document.getElementById('input-groq').value      = S.groqKey;
   document.getElementById('input-client-id').value = S.clientId;
   document.getElementById('input-folder').value    = S.folder;
 }
 
 function saveSettings() {
-  S.groqKey = document.getElementById('input-groq').value.trim();
-  S.folder  = document.getElementById('input-folder').value.trim() || 'Voice Notes';
-}
-
-function saveClientId() {
+  S.folder   = document.getElementById('input-folder').value.trim()    || 'Voice Notes';
   S.clientId = document.getElementById('input-client-id').value.trim();
   tryInitTokenClient();
   updateAuthStatus();
@@ -226,9 +202,8 @@ function toggleSettings() {
 }
 
 // ── UI helpers ─────────────────────────────────────────────────────────
-function setStatus(t)    { document.getElementById('status').textContent = t; }
-function showError(msg)  { const b = document.getElementById('error-box');   b.textContent = 'Error: ' + msg; b.style.display = 'block'; }
-function showWarning(msg){ const b = document.getElementById('warning-box'); b.textContent = 'Warning: ' + msg; b.style.display = 'block'; }
+function setStatus(t)     { document.getElementById('status').textContent = t; }
+function showError(msg)   { const b = document.getElementById('error-box');   b.textContent = 'Error: ' + msg; b.style.display = 'block'; }
 
 function resetUI() {
   document.getElementById('results').style.display     = 'none';
@@ -243,73 +218,79 @@ function resetUI() {
   setStatus('Ready');
 }
 
-function setRecordBtn(html, recording) {
+function setRecordBtn(html, active) {
   const btn = document.getElementById('record-btn');
   btn.innerHTML = html;
-  btn.classList.toggle('recording', recording);
+  btn.classList.toggle('recording', active);
 }
 
-// ── Recording ──────────────────────────────────────────────────────────
-let mediaRecorder = null, chunks = [], isRecording = false;
+// ── Speech recognition ─────────────────────────────────────────────────
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+let finalTranscript = '';
 
-async function toggleRecording() {
-  if (isRecording) { mediaRecorder.stop(); return; }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    chunks = [];
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-    mediaRecorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop());
-      processAudio(new Blob(chunks, { type: mediaRecorder.mimeType }));
-    };
-    mediaRecorder.start();
+function toggleRecording() {
+  if (isRecording) { recognition.stop(); return; }
+
+  if (!SR) {
+    showError('Speech recognition not supported — use Chrome on Android');
+    return;
+  }
+
+  finalTranscript = '';
+  document.getElementById('results').style.display     = 'none';
+  document.getElementById('error-box').style.display   = 'none';
+  document.getElementById('warning-box').style.display = 'none';
+
+  recognition = new SR();
+  recognition.continuous     = true;
+  recognition.interimResults = true;
+  recognition.lang           = navigator.language || 'en-US';
+
+  recognition.onstart = () => {
     isRecording = true;
     setRecordBtn('Stop', true);
-    setStatus('Recording...');
-    document.getElementById('results').style.display     = 'none';
-    document.getElementById('error-box').style.display   = 'none';
-    document.getElementById('warning-box').style.display = 'none';
-  } catch (err) {
-    showError('Microphone access denied: ' + err.message);
-  }
-}
+    setStatus('Listening...');
+  };
 
-async function processAudio(blob) {
-  isRecording = false;
-  setRecordBtn('Tap to<br>Record', false);
-  document.getElementById('record-btn').disabled = true;
-  setStatus('Transcribing...');
-  try {
-    const transcript = await transcribeWithGroq(blob);
-    document.getElementById('transcript-edit').value = transcript;
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        finalTranscript += e.results[i][0].transcript;
+      } else {
+        interim += e.results[i][0].transcript;
+      }
+    }
+    document.getElementById('transcript-edit').value = finalTranscript + interim;
     document.getElementById('results').style.display = 'flex';
-    setStatus('Edit if needed, then save');
-  } catch (err) {
-    showError(err.message);
+  };
+
+  recognition.onend = () => {
+    isRecording = false;
+    setRecordBtn('Tap to<br>Record', false);
+    const text = finalTranscript.trim();
+    if (text) {
+      document.getElementById('transcript-edit').value = text;
+      document.getElementById('results').style.display = 'flex';
+      setStatus('Edit if needed, then save');
+    } else {
+      setStatus('Ready');
+    }
+  };
+
+  recognition.onerror = (e) => {
+    isRecording = false;
+    setRecordBtn('Tap to<br>Record', false);
+    if (e.error !== 'aborted') showError('Speech error: ' + e.error);
     setStatus('Ready');
-  } finally {
-    document.getElementById('record-btn').disabled = false;
-  }
+  };
+
+  recognition.start();
 }
 
-// ── Groq transcription ─────────────────────────────────────────────────
-async function transcribeWithGroq(blob) {
-  if (!S.groqKey) throw new Error('Groq API key not set — open Settings');
-  const form = new FormData();
-  form.append('file', blob, 'memo.webm');
-  form.append('model', 'whisper-large-v3');
-  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + S.groqKey },
-    body: form,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'Transcription failed');
-  return data.text || '';
-}
-
-// ── Google auth (GIS + gapi) ───────────────────────────────────────────
+// ── Google auth ────────────────────────────────────────────────────────
 let googleToken = null, tokenClient = null, gapiReady = false, gisReady = false;
 
 function onGapiLoad() {
@@ -324,10 +305,7 @@ function onGapiLoad() {
   });
 }
 
-function onGisLoad() {
-  gisReady = true;
-  tryInitTokenClient();
-}
+function onGisLoad() { gisReady = true; tryInitTokenClient(); }
 
 function tryInitTokenClient() {
   if (!gapiReady || !gisReady || !S.clientId) return;
@@ -364,13 +342,13 @@ function updateAuthStatus() {
   }
 }
 
-// ── Google Drive / Docs operations ────────────────────────────────────
+// ── Drive / Docs operations ────────────────────────────────────────────
 const folderCache = {};
 const pad = n => String(n).padStart(2, '0');
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function dayTitle(d)   { return `Voice Notes — ${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
-function timeLabel(d)  { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function dayTitle(d)  { return `Voice Notes — ${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+function timeLabel(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 
 async function getOrCreateFolder(name) {
   if (folderCache[name]) return folderCache[name];
@@ -378,9 +356,7 @@ async function getOrCreateFolder(name) {
     q: `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: 'files(id)',
   });
-  if (list.result.files.length > 0) {
-    return (folderCache[name] = list.result.files[0].id);
-  }
+  if (list.result.files.length > 0) return (folderCache[name] = list.result.files[0].id);
   const f = await gapi.client.drive.files.create({
     resource: { name, mimeType: 'application/vnd.google-apps.folder' },
     fields: 'id',
@@ -402,34 +378,23 @@ async function saveTranscript(transcript) {
   const now = new Date();
   const title = dayTitle(now);
   const noteText = `\n[${timeLabel(now)}]\n${transcript}\n`;
-
   const folderId = await getOrCreateFolder(S.folder);
   let docId = await findTodayDoc(folderId, title);
 
   if (!docId) {
-    // Create via Docs API — no async conversion delay
     const doc = await gapi.client.docs.documents.create({ resource: { title } });
     docId = doc.result.documentId;
-
-    // Move into Voice Notes folder
     const file = await gapi.client.drive.files.get({ fileId: docId, fields: 'parents' });
     const prevParents = (file.result.parents || []).join(',');
     await gapi.client.drive.files.update({
-      fileId: docId,
-      addParents: folderId,
-      removeParents: prevParents,
-      fields: 'id',
-      resource: {},
+      fileId: docId, addParents: folderId, removeParents: prevParents, fields: 'id', resource: {},
     });
-
-    // Insert header + first note
     const header = `${title}\n${'='.repeat(title.length)}\n`;
     await gapi.client.docs.documents.batchUpdate({
       documentId: docId,
       resource: { requests: [{ insertText: { location: { index: 1 }, text: header + noteText } }] },
     });
   } else {
-    // Append to today's existing doc
     const docData = await gapi.client.docs.documents.get({ documentId: docId });
     const content = docData.result.body.content;
     const endIndex = content[content.length - 1].endIndex - 1;
@@ -450,14 +415,12 @@ async function saveNote() {
   const btn = document.getElementById('save-btn');
   btn.disabled = true;
   btn.textContent = 'Saving...';
-  document.getElementById('warning-box').style.display = 'none';
   setStatus('Saving...');
 
   try {
     const docUrl = await saveTranscript(transcript);
-    const link = document.getElementById('drive-link');
-    link.href = docUrl;
-    link.style.display = 'flex';
+    document.getElementById('drive-link').href = docUrl;
+    document.getElementById('drive-link').style.display = 'flex';
     btn.style.display = 'none';
     document.getElementById('discard-btn').style.display = 'none';
     document.getElementById('new-btn').style.display = 'block';
@@ -471,15 +434,15 @@ async function saveNote() {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
-if (!S.groqKey || !S.clientId) {
+if (!S.clientId) {
   document.getElementById('settings-panel').classList.add('open');
   loadSettingsForm();
 }
 updateAuthStatus();
 </script>
 
-<script async defer src="https://apis.google.com/js/api.js"        onload="onGapiLoad()"></script>
-<script async defer src="https://accounts.google.com/gsi/client"   onload="onGisLoad()"></script>
+<script async defer src="https://apis.google.com/js/api.js"      onload="onGapiLoad()"></script>
+<script async defer src="https://accounts.google.com/gsi/client" onload="onGisLoad()"></script>
 
 </body>
 </html>
